@@ -99,20 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
           const activity = e.currentTarget.getAttribute('data-activity');
           const email = e.currentTarget.getAttribute('data-email');
           if (!activity || !email) return;
-          // Call backend to unregister participant
-          try {
-            const response = await fetch(`/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`, {
-              method: 'DELETE',
-            });
-            if (response.ok) {
-              fetchActivities(); // Refresh list
-            } else {
-              const result = await response.json();
-              alert(result.detail || 'Failed to remove participant.');
-            }
-          } catch (err) {
-            alert('Failed to remove participant.');
-          }
+          // The backend currently exposes signup via POST only; do not send an
+          // unsupported DELETE request that will fail with 405.
+          alert('Participant removal is not available because the server does not expose a matching removal endpoint.');
         });
       });
     } catch (error) {
