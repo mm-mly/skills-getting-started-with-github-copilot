@@ -10,8 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and reset dropdown options
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = "";
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -21,32 +22,67 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
 
-        // Create participants list HTML with delete icon (no bullets)
-        let participantsHTML = "<div class='participants-list'>";
+        // Build participants list using DOM APIs to avoid XSS
+        const participantsList = document.createElement("div");
+        participantsList.className = "participants-list";
+
         if (details.participants.length > 0) {
           details.participants.forEach(email => {
-            participantsHTML += `
-              <div class='participant-row'>
-                <span class='participant-email'>${email}</span>
-                <span class='delete-participant' title='Remove participant' data-activity='${name}' data-email='${email}'>&#128465;</span>
-              </div>
-            `;
+            const participantRow = document.createElement("div");
+            participantRow.className = "participant-row";
+
+            const participantEmail = document.createElement("span");
+            participantEmail.className = "participant-email";
+            participantEmail.textContent = email;
+            participantRow.appendChild(participantEmail);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "delete-participant";
+            deleteBtn.setAttribute("aria-label", `Remove participant: ${email}`);
+            deleteBtn.dataset.activity = name;
+            deleteBtn.dataset.email = email;
+            deleteBtn.textContent = "\u{1F5D1}";
+            participantRow.appendChild(deleteBtn);
+
+            participantsList.appendChild(participantRow);
           });
         } else {
-          participantsHTML += `<div class='no-participants'>No participants yet</div>`;
+          const noParticipants = document.createElement("div");
+          noParticipants.className = "no-participants";
+          noParticipants.textContent = "No participants yet";
+          participantsList.appendChild(noParticipants);
         }
-        participantsHTML += "</div>";
 
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants-section">
-            <strong>Participants:</strong>
-            ${participantsHTML}
-          </div>
-        `;
+        const title = document.createElement("h4");
+        title.textContent = name;
+        activityCard.appendChild(title);
+
+        const description = document.createElement("p");
+        description.textContent = details.description;
+        activityCard.appendChild(description);
+
+        const schedule = document.createElement("p");
+        const scheduleLabel = document.createElement("strong");
+        scheduleLabel.textContent = "Schedule:";
+        schedule.appendChild(scheduleLabel);
+        schedule.appendChild(document.createTextNode(` ${details.schedule}`));
+        activityCard.appendChild(schedule);
+
+        const availability = document.createElement("p");
+        const availabilityLabel = document.createElement("strong");
+        availabilityLabel.textContent = "Availability:";
+        availability.appendChild(availabilityLabel);
+        availability.appendChild(document.createTextNode(` ${spotsLeft} spots left`));
+        activityCard.appendChild(availability);
+
+        const participantsSection = document.createElement("div");
+        participantsSection.className = "participants-section";
+        const participantsLabel = document.createElement("strong");
+        participantsLabel.textContent = "Participants:";
+        participantsSection.appendChild(participantsLabel);
+        participantsSection.appendChild(participantsList);
+        activityCard.appendChild(participantsSection);
 
         activitiesList.appendChild(activityCard);
 
@@ -57,11 +93,11 @@ document.addEventListener("DOMContentLoaded", () => {
         activitySelect.appendChild(option);
       });
 
-      // Add event listeners for delete icons
-      document.querySelectorAll('.delete-participant').forEach(icon => {
-        icon.addEventListener('click', async (e) => {
-          const activity = e.target.getAttribute('data-activity');
-          const email = e.target.getAttribute('data-email');
+      // Add event listeners for delete buttons
+      document.querySelectorAll('.delete-participant').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const activity = e.currentTarget.getAttribute('data-activity');
+          const email = e.currentTarget.getAttribute('data-email');
           if (!activity || !email) return;
           // Call backend to unregister participant
           try {

@@ -112,9 +112,14 @@ section h3 {
   font-size: 18px;
   transition: color 0.2s;
   user-select: none;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
 }
 .delete-participant:hover {
   color: #b71c1c;
+  background: none;
 }
 .no-participants {
   color: #888;
