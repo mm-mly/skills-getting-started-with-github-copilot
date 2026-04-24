@@ -1,8 +1,19 @@
-import pytest
+import copy
 from fastapi.testclient import TestClient
+import pytest
 from src.app import app, activities
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def restore_activities():
+    """Snapshot and restore the global activities dict around each test."""
+    snapshot = copy.deepcopy(activities)
+    yield
+    activities.clear()
+    activities.update(snapshot)
+
 
 # Arrange-Act-Assert (AAA) pattern is used in all tests
 
@@ -27,8 +38,6 @@ def test_signup_success():
     assert response.status_code == 200
     data = response.json()
     assert data["message"] == f"Signed up {email} for {activity}"
-    # Clean up: remove the test email if needed
-    activities[activity]["participants"].remove(email)
 
 def test_signup_duplicate():
     # Arrange
@@ -55,8 +64,7 @@ def test_signup_nonexistent_activity():
 def test_root_redirect():
     # Arrange: (nothing to arrange)
     # Act
-    response = client.get("/")
+    response = client.get("/", follow_redirects=False)
     # Assert
-    assert response.status_code == 200 or response.status_code == 307 or response.status_code == 302
-    # Should redirect to /static/index.html
-    assert "/static/index.html" in str(response.url)
+    assert response.status_code in (302, 307)
+    assert response.headers["location"] == "/static/index.html"
